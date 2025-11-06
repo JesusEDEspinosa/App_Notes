@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">App Notas</string>
+    <string name="placeholder_buscar">Buscar...</string>
+    <string name="notas_vacias">No hay notas registradas</string>
+    <string name="btn_volver">Volver</string>
+    <string name="btn_editar">Editar</string>
+    <string name="btn_eliminar">Eliminar</string>
+    <string name="marcar_pendiente">Marcar pendiente</string>
+    <string name="marcar_completada">Marcar completada</string>
+    <string name="confirmar_eliminar">Confirmar eliminación</string>
+    <string name="eliminar_definitivo">¿Estás seguro de que deseas eliminar esta nota? Esta acción no se puede deshacer.</string>
+    <string name="btn_cancelar">Cancelar</string>
+    <string name="fecha_limite">Fecha límite: %1$s</string>
+    <string name="tarea_completada">Completada</string>
+    <string name="recordatorios">Recordatorios:</string>
+    <string name="archivos_adjuntos">Archivos adjuntos:</string>
+    <string name="video_adjunto">Video adjunto: %1$s</string>
+    <string name="audio_adjunto">Audio adjunto: %1$s</string>
+    <string name="archivo">Archivo: %1$s</string>
+    <string name="btn_guardar">Guardar</string>
+    <string name="nueva_nota">Nueva nota</string>
+    <string name="editar_nota">Editar nota</string>
+    <string name="titulo_nota">Titulo</string>
+    <string name="titulo_placeholder">Escribe el título de la nota</string>
+    <string name="descripcion_nota">Descripción</string>
+    <string name="descripcion_placeholder">Escribe la descripción de la nota</string>
+    <string name="seleccionar_fecha">Seleccionar fecha</string>
+    <string name="texto_fecha">Fecha: %1$s</string>
+    <string name="seleccionar_hora">Seleccionar hora</string>
+    <string name="texto_hora">Hora: %1$s</string>
+    <string name="agregar_archivo">Agregar archivo</string>
+    <string name="marcar_como_tarea">Marcar como tarea</string>
+    <string name="agregar_recordatorio">+ Agregar recordatorio</string>
+    <string name="recordatorios_vacios">No se han añadido recordatorios</string>
+    <string name="archivos_vacios">No hay archivos adjuntos añadidos</string>
+</resources>

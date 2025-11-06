@@ -1,0 +1,36 @@
+<resources>
+    <string name="app_name">App Notes</string>
+    <string name="placeholder_buscar">Search...</string>
+    <string name="notas_vacias">No notes available</string>
+    <string name="btn_volver">Back</string>
+    <string name="btn_editar">Edit</string>
+    <string name="btn_eliminar">Delete</string>
+    <string name="marcar_pendiente">Mark as pending</string>
+    <string name="marcar_completada">Mark as completed</string>
+    <string name="confirmar_eliminar">Confirm deletion</string>
+    <string name="eliminar_definitivo">Are you sure you want to delete this note? This action cannot be undone.</string>
+    <string name="btn_cancelar">Cancel</string>
+    <string name="fecha_limite">Due date: %1$s</string>
+    <string name="tarea_completada">Completed</string>
+    <string name="recordatorios">Reminders:</string>
+    <string name="archivos_adjuntos"> Attachments:</string>
+    <string name="video_adjunto">Attached video: %1$s</string>
+    <string name="audio_adjunto">Attached audio: %1$s</string>
+    <string name="archivo">File: %1$s</string>
+    <string name="btn_guardar">Save</string>
+    <string name="nueva_nota">New note</string>
+    <string name="editar_nota">Edit note</string>
+    <string name="titulo_nota">Title</string>
+    <string name="titulo_placeholder">Enter the note title</string>
+    <string name="descripcion_nota">Description</string>
+    <string name="descripcion_placeholder">Enter the note description</string>
+    <string name="seleccionar_fecha">Select date</string>
+    <string name="texto_fecha">Date: %1$s</string>
+    <string name="seleccionar_hora">Select time</string>
+    <string name="texto_hora">Time: %1$s</string>
+    <string name="agregar_archivo">Add file</string>
+    <string name="marcar_como_tarea">Mark as task</string>
+    <string name="agregar_recordatorio">+ Add reminder</string>
+    <string name="recordatorios_vacios">No reminders added</string>
+    <string name="archivos_vacios">No attachments added</string>
+</resources>

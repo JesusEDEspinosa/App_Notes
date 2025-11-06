@@ -1,0 +1,77 @@
+# =========================
+# ANDROID STUDIO / GRADLE
+# =========================
+.gradle/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+local.properties
+
+# =========================
+# ANDROID STUDIO PROJECT FILES
+# =========================
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# =========================
+# LOGS, CACHE, TEMPORAL FILES
+# =========================
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# =========================
+# OS SYSTEM FILES
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# SIGNING / KEYS / SECRETS
+# =========================
+*.jks
+*.keystore
+*.pem
+*.key
+*.p12
+signing.properties
+secrets.properties
+
+# =========================
+# GENERATED FILES
+# =========================
+app/build/
+*/build/
+output.json
+
+# =========================
+# KOTLIN & JAVA
+# =========================
+*.class
+*.jar
+*.war
+*.ear
+
+# =========================
+# INTELLIJ / ANDROID CONFIG CACHE
+# =========================
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/dictionaries
+.idea/libraries
+.idea/caches/
+.idea/modules.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+
+# =========================
+# MISC
+# =========================
+*.bak
+*.orig
+*.rej
