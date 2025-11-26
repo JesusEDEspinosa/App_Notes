@@ -3,7 +3,7 @@ package com.example.appnotes.ui.note
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.net.Uri
-
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,6 +27,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -42,7 +45,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -54,10 +56,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -68,8 +68,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.appnotes.R
 import com.example.appnotes.data.Attachment
+import com.example.appnotes.data.Reminder
 import com.example.appnotes.ui.NoteEntryViewModelProvider
 import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @Composable
 fun NoteEntryScreen (
@@ -116,6 +119,8 @@ fun NoteEntryScreen (
                 attachments = attachments,
                 onAttachmentsChange = {attachments = it},
                 onValueChange = viewModel::updateUiState,
+                onAddReminder = viewModel::addReminder,
+                onRemoveReminder = viewModel::removeReminder,
                 modifier = Modifier.padding(innerPadding)
             )
         }
@@ -146,11 +151,15 @@ fun NoteEntryForm (
     attachments: List<Attachment>,
     onAttachmentsChange: (List<Attachment>) -> Unit,
     onValueChange: (NoteUiState) -> Unit,
+    onAddReminder: (Long) -> Unit,
+    onRemoveReminder: (Reminder) -> Unit,
 
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val calendar = Calendar.getInstance()
+    // Use remember to keep the calendar instance across recompositions but initialized only once
+    val calendar = remember { Calendar.getInstance() }
+
     Column (
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -182,6 +191,21 @@ fun NoteEntryForm (
             val date = remember { mutableStateOf("") }
             val time = remember { mutableStateOf("") }
 
+            // Initialize date/time text if editing an existing note with a due date
+            LaunchedEffect(noteUiState.dueDateTime) {
+                if (noteUiState.dueDateTime != null && noteUiState.dueDateTime > 0) {
+                    calendar.timeInMillis = noteUiState.dueDateTime
+                    val day = calendar.get(Calendar.DAY_OF_MONTH)
+                    val month = calendar.get(Calendar.MONTH) + 1
+                    val year = calendar.get(Calendar.YEAR)
+                    date.value = "$day/$month/$year"
+
+                    val hour = calendar.get(Calendar.HOUR_OF_DAY)
+                    val minute = calendar.get(Calendar.MINUTE)
+                    time.value = "%02d:%02d".format(hour, minute)
+                }
+            }
+
             Row (
                 modifier = Modifier
                     .fillMaxWidth()
@@ -190,16 +214,24 @@ fun NoteEntryForm (
             ) {
                 Button(
                     onClick = {
+                        val currentYear = calendar.get(Calendar.YEAR)
+                        val currentMonth = calendar.get(Calendar.MONTH)
+                        val currentDay = calendar.get(Calendar.DAY_OF_MONTH)
+
                         val datePicker = DatePickerDialog(
                             context,
                             { _, year, month, day ->
-                                calendar.set(year, month, day)
+                                // Update the calendar object
+                                calendar.set(Calendar.YEAR, year)
+                                calendar.set(Calendar.MONTH, month)
+                                calendar.set(Calendar.DAY_OF_MONTH, day)
+                                
                                 date.value = "$day/${month + 1}/$year"
                                 onValueChange(noteUiState.copy(dueDateTime = calendar.timeInMillis))
                             },
-                            calendar.get(Calendar.YEAR),
-                            calendar.get(Calendar.MONTH),
-                            calendar.get(Calendar.DAY_OF_MONTH)
+                            currentYear,
+                            currentMonth,
+                            currentDay
                         )
                         datePicker.show()
                     }
@@ -211,16 +243,21 @@ fun NoteEntryForm (
 
                 Button(
                     onClick = {
+                        val currentHour = calendar.get(Calendar.HOUR_OF_DAY)
+                        val currentMinute = calendar.get(Calendar.MINUTE)
+                        
                         val timePicker = TimePickerDialog(
                             context,
                             { _, hour, minute ->
                                 calendar.set(Calendar.HOUR_OF_DAY, hour)
                                 calendar.set(Calendar.MINUTE, minute)
+                                calendar.set(Calendar.SECOND, 0) // Reset seconds
+
                                 time.value = "%02d:%02d".format(hour, minute)
                                 onValueChange(noteUiState.copy(dueDateTime = calendar.timeInMillis))
                             },
-                            calendar.get(Calendar.HOUR_OF_DAY),
-                            calendar.get(Calendar.MINUTE),
+                            currentHour,
+                            currentMinute,
                             true
                         )
                         timePicker.show()
@@ -231,6 +268,13 @@ fun NoteEntryForm (
                     ))
                 }
             }
+
+            // Tarjeta de Recordatorios Adicionales
+            RemindersCard(
+                reminders = noteUiState.reminders,
+                onAddReminder = onAddReminder,
+                onRemoveReminder = onRemoveReminder
+            )
         }
 
         val launcher = rememberLauncherForActivityResult(
@@ -441,7 +485,14 @@ fun ConvertToTaskCard(
 }
 
 @Composable
-fun RemindersCard() {
+fun RemindersCard(
+    reminders: List<Reminder>,
+    onAddReminder: (Long) -> Unit,
+    onRemoveReminder: (Reminder) -> Unit
+) {
+    val context = LocalContext.current
+    val calendar = Calendar.getInstance()
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -460,11 +511,61 @@ fun RemindersCard() {
                 Text(
                     stringResource(R.string.agregar_recordatorio),
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable {  }
+                    modifier = Modifier.clickable {
+                        // Mostrar selectores de fecha y hora encadenados
+                        val datePicker = DatePickerDialog(
+                            context,
+                            { _, year, month, day ->
+                                calendar.set(Calendar.YEAR, year)
+                                calendar.set(Calendar.MONTH, month)
+                                calendar.set(Calendar.DAY_OF_MONTH, day)
+                                
+                                TimePickerDialog(
+                                    context,
+                                    { _, hour, minute ->
+                                        calendar.set(Calendar.HOUR_OF_DAY, hour)
+                                        calendar.set(Calendar.MINUTE, minute)
+                                        calendar.set(Calendar.SECOND, 0)
+                                        onAddReminder(calendar.timeInMillis)
+                                    },
+                                    calendar.get(Calendar.HOUR_OF_DAY),
+                                    calendar.get(Calendar.MINUTE),
+                                    true
+                                ).show()
+                            },
+                            calendar.get(Calendar.YEAR),
+                            calendar.get(Calendar.MONTH),
+                            calendar.get(Calendar.DAY_OF_MONTH)
+                        )
+                        datePicker.show()
+                    }
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text(stringResource(R.string.recordatorios_vacios), color = Color.Gray, fontSize = 13.sp)
+            
+            if (reminders.isEmpty()) {
+                Text(stringResource(R.string.recordatorios_vacios), color = Color.Gray, fontSize = 13.sp)
+            } else {
+                Column {
+                    reminders.forEach { reminder ->
+                        val formattedDate = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(reminder.remindAt)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Notifications, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(formattedDate, fontSize = 14.sp)
+                            }
+                            IconButton(onClick = { onRemoveReminder(reminder) }, modifier = Modifier.size(24.dp)) {
+                                Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = Color.Red)
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

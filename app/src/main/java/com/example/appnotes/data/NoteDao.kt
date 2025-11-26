@@ -32,7 +32,7 @@ interface NoteDao {
 
     //Reminders
     @Insert
-    suspend fun insertReminder(reminder: Reminder)
+    suspend fun insertReminder(reminder: Reminder): Long
 
     @Query("DELETE FROM reminders WHERE noteId = :noteId")
     suspend fun deleteRemindersByNoteId(noteId: Int)
