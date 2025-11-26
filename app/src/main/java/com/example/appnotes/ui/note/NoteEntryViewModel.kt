@@ -24,7 +24,7 @@ class NoteEntryViewModel(
     fun loadNote(noteId: Int) {
         viewModelScope.launch {
             notesRepository.getNote(noteId).collect { noteWithDetails ->
-                noteWithDetails?.let { safeNoteWithDetais ->
+                noteWithDetails?.let { safeNoteWithDetails ->
                     val note = noteWithDetails.note
                     _noteUiState.value = NoteUiState(
                         id = note.id,
@@ -34,7 +34,8 @@ class NoteEntryViewModel(
                         dueDateTime = note.dueDateTime,
                         completed = note.isCompleted,
                         createdAt = note.createdAt,
-                        reminders = safeNoteWithDetais.reminders
+                        reminders = safeNoteWithDetails.reminders,
+                        attachments = safeNoteWithDetails.attachments
                     )
                     isEditMode = true
                 }
@@ -59,17 +60,24 @@ class NoteEntryViewModel(
         
         if (reminder.id != 0) {
              viewModelScope.launch {
-                 // Como la UI no se actualiza instantáneamente desde BD en este flujo,
-                 // necesitamos borrarlo "virtualmente" hasta guardar, pero
-                 // como ya lo quitamos de la lista en memoria, si el usuario guarda,
-                 // la lógica de "borrar todos y reinsertar" funcionará.
-                 // Sin embargo, si quiere cancelar la alarma YA:
                  alarmScheduler.cancel(reminder)
              }
         }
     }
 
-    fun saveNote(attachments: List<Attachment> = emptyList()) {
+    fun addAttachment(attachment: Attachment) {
+        val currentAttachments = _noteUiState.value.attachments.toMutableList()
+        currentAttachments.add(attachment)
+        _noteUiState.value = _noteUiState.value.copy(attachments = currentAttachments)
+    }
+
+    fun removeAttachment(attachment: Attachment) {
+        val currentAttachments = _noteUiState.value.attachments.toMutableList()
+        currentAttachments.remove(attachment)
+        _noteUiState.value = _noteUiState.value.copy(attachments = currentAttachments)
+    }
+
+    fun saveNote() {
         viewModelScope.launch {
             val noteUi = noteUiState.value
             val note = Note(
@@ -88,31 +96,27 @@ class NoteEntryViewModel(
                 notesRepository.updateNote(note)
                 noteId = note.id
                 
-                // Limpiar recordatorios antiguos para evitar duplicados o inconsistencias
                 notesRepository.deleteRemindersByNoteId(noteId)
                 alarmScheduler.cancel(note)
+                notesRepository.deleteAttachmentsByNoteId(noteId) // Also clear old attachments
             } else {
                 val newId = notesRepository.insertNote(note)
                 noteId = newId.toInt()
             }
             
-            // Guardar alarma principal (dueDateTime)
              if (note.dueDateTime != null) {
                  alarmScheduler.schedule(note)
              }
 
-            // Guardar y programar recordatorios adicionales
             noteUi.reminders.forEach { reminder ->
-                val newReminder = reminder.copy(noteId = noteId, id = 0) // Reset ID para autogenerar
+                val newReminder = reminder.copy(noteId = noteId, id = 0)
                 val generatedId = notesRepository.addReminder(newReminder)
-                
-                // Programar la alarma usando el ID real generado
                 val savedReminder = newReminder.copy(id = generatedId.toInt())
                 alarmScheduler.schedule(savedReminder, note.title)
             }
 
-            attachments.forEach { att ->
-                notesRepository.addAttachment(att.copy(noteId = noteId))
+            noteUi.attachments.forEach { att ->
+                notesRepository.addAttachment(att.copy(noteId = noteId, id = 0))
             }
         }
     }
@@ -131,5 +135,6 @@ data class NoteUiState(
     val dueDateTime: Long? = null,
     val completed: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
-    val reminders: List<Reminder> = emptyList()
+    val reminders: List<Reminder> = emptyList(),
+    val attachments: List<Attachment> = emptyList()
 )

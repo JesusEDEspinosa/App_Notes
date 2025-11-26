@@ -1,13 +1,17 @@
 package com.example.appnotes.ui.note
 
+import android.Manifest
+import android.app.Activity
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,7 +29,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
@@ -63,6 +66,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -71,32 +75,29 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.appnotes.R
 import com.example.appnotes.data.Attachment
 import com.example.appnotes.data.Reminder
 import com.example.appnotes.ui.NoteEntryViewModelProvider
-import java.util.Calendar
+import java.io.File
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Locale
 
 @Composable
-fun NoteEntryScreen (
+fun NoteEntryScreen(
     navigateBack: () -> Unit,
     onNavigateUp: () -> Unit = navigateBack,
     noteId: Int? = null,
     viewModel: NoteEntryViewModel = viewModel(factory = NoteEntryViewModelProvider.Factory)
-)
-{
+) {
     val noteUiState by viewModel.noteUiState.collectAsState()
-    val context = LocalContext.current
-    var attachments by remember { mutableStateOf<List<Attachment>>(emptyList()) }
 
-
-    LaunchedEffect(
-        noteId
-    ) {
+    LaunchedEffect(noteId) {
         if (noteId != null) viewModel.loadNote(noteId)
     }
 
@@ -114,7 +115,7 @@ fun NoteEntryScreen (
                     icon = { Icon(Icons.Default.Check, contentDescription = stringResource(R.string.btn_guardar)) },
                     onClick = {
                         if (viewModel.isValidNote()) {
-                            viewModel.saveNote(attachments)
+                            viewModel.saveNote()
                             navigateBack()
                         }
                     }
@@ -123,16 +124,17 @@ fun NoteEntryScreen (
         ) { innerPadding ->
             NoteEntryForm(
                 noteUiState,
-                attachments = attachments,
-                onAttachmentsChange = {attachments = it},
                 onValueChange = viewModel::updateUiState,
                 onAddReminder = viewModel::addReminder,
                 onRemoveReminder = viewModel::removeReminder,
+                onAddAttachment = viewModel::addAttachment,
+                onRemoveAttachment = viewModel::removeAttachment,
                 modifier = Modifier.padding(innerPadding)
             )
         }
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotesTopBar(
@@ -140,7 +142,7 @@ fun NotesTopBar(
     onNavigateUp: () -> Unit
 ) {
     TopAppBar(
-        title = { Text( if(noteId == null) stringResource(R.string.nueva_nota) else stringResource(R.string.editar_nota))  },
+        title = { Text(if (noteId == null) stringResource(R.string.nueva_nota) else stringResource(R.string.editar_nota)) },
         navigationIcon = {
             IconButton(onClick = onNavigateUp) {
                 Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.btn_volver))
@@ -153,21 +155,19 @@ fun NotesTopBar(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NoteEntryForm (
+fun NoteEntryForm(
     noteUiState: NoteUiState,
-    attachments: List<Attachment>,
-    onAttachmentsChange: (List<Attachment>) -> Unit,
     onValueChange: (NoteUiState) -> Unit,
     onAddReminder: (Long) -> Unit,
     onRemoveReminder: (Reminder) -> Unit,
-
+    onAddAttachment: (Attachment) -> Unit,
+    onRemoveAttachment: (Attachment) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    // Use remember to keep the calendar instance across recompositions but initialized only once
     val calendar = remember { Calendar.getInstance() }
 
-    Column (
+    Column(
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -198,7 +198,6 @@ fun NoteEntryForm (
             val date = remember { mutableStateOf("") }
             val time = remember { mutableStateOf("") }
 
-            // Initialize date/time text if editing an existing note with a due date
             LaunchedEffect(noteUiState.dueDateTime) {
                 if (noteUiState.dueDateTime != null && noteUiState.dueDateTime > 0) {
                     calendar.timeInMillis = noteUiState.dueDateTime
@@ -213,7 +212,7 @@ fun NoteEntryForm (
                 }
             }
 
-            Row (
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(12.dp),
@@ -228,11 +227,10 @@ fun NoteEntryForm (
                         val datePicker = DatePickerDialog(
                             context,
                             { _, year, month, day ->
-                                // Update the calendar object
                                 calendar.set(Calendar.YEAR, year)
                                 calendar.set(Calendar.MONTH, month)
                                 calendar.set(Calendar.DAY_OF_MONTH, day)
-                                
+
                                 date.value = "$day/${month + 1}/$year"
                                 onValueChange(noteUiState.copy(dueDateTime = calendar.timeInMillis))
                             },
@@ -252,13 +250,13 @@ fun NoteEntryForm (
                     onClick = {
                         val currentHour = calendar.get(Calendar.HOUR_OF_DAY)
                         val currentMinute = calendar.get(Calendar.MINUTE)
-                        
+
                         val timePicker = TimePickerDialog(
                             context,
                             { _, hour, minute ->
                                 calendar.set(Calendar.HOUR_OF_DAY, hour)
                                 calendar.set(Calendar.MINUTE, minute)
-                                calendar.set(Calendar.SECOND, 0) // Reset seconds
+                                calendar.set(Calendar.SECOND, 0)
 
                                 time.value = "%02d:%02d".format(hour, minute)
                                 onValueChange(noteUiState.copy(dueDateTime = calendar.timeInMillis))
@@ -276,7 +274,6 @@ fun NoteEntryForm (
                 }
             }
 
-            // Tarjeta de Recordatorios Adicionales
             RemindersCard(
                 reminders = noteUiState.reminders,
                 onAddReminder = onAddReminder,
@@ -284,75 +281,88 @@ fun NoteEntryForm (
             )
         }
 
-        val launcher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.GetContent()
-        ) { uri: Uri? ->
-            uri?.let {
-                val mime = context.contentResolver.getType(uri) ?: ""
-                val type = when {
-                    mime.startsWith("image/") -> "image"
-                    mime.startsWith("video/") -> "video"
-                    mime.startsWith("audio/") -> "audio"
-                    else -> "file"
+        val fileLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.GetContent(),
+            onResult = { uri: Uri? ->
+                uri?.let {
+                    val mime = context.contentResolver.getType(uri) ?: ""
+                    val type = when {
+                        mime.startsWith("image/") -> "image"
+                        mime.startsWith("video/") -> "video"
+                        mime.startsWith("audio/") -> "audio"
+                        else -> "file"
+                    }
+                    val newAttachment = Attachment(
+                        noteId = 0,
+                        uri = uri.toString(),
+                        type = type
+                    )
+                    onAddAttachment(newAttachment)
                 }
-                val newAttachment = Attachment(
-                    noteId = 0, // luego se actualiza tras guardar la nota
-                    uri = uri.toString(),
-                    type = type
-                )
-                onAttachmentsChange(attachments + newAttachment)
             }
-        }
-        
-        // Attachments Menu Logic
-        AttachmentsCard(
-            attachments = attachments,
-            onAddFile = { launcher.launch("*/*") },
-            onAddCamera = {  },
-            onAddVideo = {  },
-            onAddAudio = {  }
         )
 
-        if (attachments.isNotEmpty()) {
+        val cameraLauncher = rememberCameraLauncher(onAddAttachment = onAddAttachment)
+        val audioLauncher = rememberAudioLauncher(onAddAttachment = onAddAttachment)
+        val videoLauncher = rememberVideoLauncher(onAddAttachment = onAddAttachment)
+
+        AttachmentsCard(
+            attachments = noteUiState.attachments,
+            onAddFile = { fileLauncher.launch("*/*") },
+            onAddCamera = { cameraLauncher.captureImage() },
+            onAddVideo = { videoLauncher.captureVideo() },
+            onAddAudio = { audioLauncher.recordAudio() }
+        )
+
+        if (noteUiState.attachments.isNotEmpty()) {
             Spacer(modifier = Modifier.height(8.dp))
-            Text(stringResource(R.string.archivos_adjuntos), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.archivos_adjuntos),
+                style = MaterialTheme.typography.titleMedium
+            )
 
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(top = 8.dp)
             ) {
-                items(attachments) { att ->
-                    when (att.type) {
-                        "image" -> {
-                            Image(
-                                painter = rememberAsyncImagePainter(att.uri),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(80.dp)
-                                    .clip(RoundedCornerShape(8.dp)),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
-                        "video" -> {
-                            Icon(
-                                Icons.Default.PlayArrow,
-                                contentDescription = null,
-                                modifier = Modifier.size(60.dp)
-                            )
-                        }
-                        "audio" -> {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = null,
-                                modifier = Modifier.size(60.dp)
-                            )
-                        }
-                        else -> {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = null,
-                                modifier = Modifier.size(60.dp)
-                            )
+                items(noteUiState.attachments) { att ->
+                    Box(modifier = Modifier.pointerInput(att) {
+                        detectTapGestures(
+                            onLongPress = { onRemoveAttachment(att) }
+                        )
+                    }) {
+                        when (att.type) {
+                            "image" -> {
+                                Image(
+                                    painter = rememberAsyncImagePainter(att.uri),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(80.dp)
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                            "video" -> {
+                                Icon(
+                                    Icons.Default.PlayArrow,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(60.dp)
+                                )
+                            }
+                            "audio" -> {
+                                Icon(
+                                    Icons.Default.Mic,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(60.dp)
+                                )
+                            }
+                            else -> {
+                                Icon(
+                                    Icons.Default.Description,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(60.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -360,6 +370,172 @@ fun NoteEntryForm (
         }
 
     }
+}
+
+@Composable
+fun rememberCameraLauncher(onAddAttachment: (Attachment) -> Unit): CameraLauncher {
+    val context = LocalContext.current
+    var tempImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture(),
+        onResult = { success ->
+            if (success) {
+                tempImageUri?.let { uri ->
+                    val newAttachment = Attachment(noteId = 0, uri = uri.toString(), type = "image")
+                    onAddAttachment(newAttachment)
+                }
+            }
+        }
+    )
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            val tempImageFile = File.createTempFile("JPEG_", ".jpg", context.externalCacheDir)
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", tempImageFile)
+            tempImageUri = uri
+            cameraLauncher.launch(uri)
+        } else {
+            Toast.makeText(context, "Camera permission denied", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    return remember {
+        object : CameraLauncher {
+            override fun captureImage() {
+                when (PackageManager.PERMISSION_GRANTED) {
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) -> {
+                        val tempImageFile = File.createTempFile("JPEG_", ".jpg", context.externalCacheDir)
+                        val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", tempImageFile)
+                        tempImageUri = uri
+                        cameraLauncher.launch(uri)
+                    }
+                    else -> {
+                        permissionLauncher.launch(Manifest.permission.CAMERA)
+                    }
+                }
+            }
+        }
+    }
+}
+
+interface CameraLauncher {
+    fun captureImage()
+}
+
+@Composable
+fun rememberAudioLauncher(onAddAttachment: (Attachment) -> Unit): AudioRecorderLauncher {
+    val context = LocalContext.current
+    var tempAudioUri by remember { mutableStateOf<Uri?>(null) }
+
+    val audioLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            tempAudioUri?.let { uri ->
+                val newAttachment = Attachment(noteId = 0, uri = uri.toString(), type = "audio")
+                onAddAttachment(newAttachment)
+            }
+        }
+    }
+
+    val recordAudioPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (isGranted) {
+                val tempAudioFile = File.createTempFile("AAC_", ".aac", context.externalCacheDir)
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", tempAudioFile)
+                tempAudioUri = uri
+
+                val intent = android.content.Intent(android.provider.MediaStore.Audio.Media.RECORD_SOUND_ACTION)
+                    .putExtra(android.provider.MediaStore.EXTRA_OUTPUT, uri)
+                audioLauncher.launch(intent)
+            } else {
+                Toast.makeText(context, "Audio recording permission denied.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    )
+
+    return remember {
+        object : AudioRecorderLauncher {
+            override fun recordAudio() {
+                when (PackageManager.PERMISSION_GRANTED) {
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) -> {
+                        val tempAudioFile = File.createTempFile("AAC_", ".aac", context.externalCacheDir)
+                        val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", tempAudioFile)
+                        tempAudioUri = uri
+
+                        val intent = android.content.Intent(android.provider.MediaStore.Audio.Media.RECORD_SOUND_ACTION)
+                            .putExtra(android.provider.MediaStore.EXTRA_OUTPUT, uri)
+                        audioLauncher.launch(intent)
+                    }
+                    else -> {
+                        recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    }
+                }
+            }
+        }
+    }
+}
+
+interface AudioRecorderLauncher {
+    fun recordAudio()
+}
+
+@Composable
+fun rememberVideoLauncher(onAddAttachment: (Attachment) -> Unit): VideoLauncher {
+    val context = LocalContext.current
+    var tempVideoUri by remember { mutableStateOf<Uri?>(null) }
+
+    val videoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CaptureVideo(),
+        onResult = { success ->
+            if (success) {
+                tempVideoUri?.let { uri ->
+                    val newAttachment = Attachment(noteId = 0, uri = uri.toString(), type = "video")
+                    onAddAttachment(newAttachment)
+                }
+            }
+        }
+    )
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (isGranted) {
+                val tempVideoFile = File.createTempFile("MP4_", ".mp4", context.externalCacheDir)
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", tempVideoFile)
+                tempVideoUri = uri
+                videoLauncher.launch(uri)
+            } else {
+                Toast.makeText(context, "Camera permission denied.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    )
+
+    return remember {
+        object : VideoLauncher {
+            override fun captureVideo() {
+                when (PackageManager.PERMISSION_GRANTED) {
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) -> {
+                        val tempVideoFile = File.createTempFile("MP4_", ".mp4", context.externalCacheDir)
+                        val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", tempVideoFile)
+                        tempVideoUri = uri
+                        videoLauncher.launch(uri)
+                    }
+                    else -> {
+                        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                    }
+                }
+            }
+        }
+    }
+}
+
+interface VideoLauncher {
+    fun captureVideo()
 }
 
 
@@ -373,15 +549,15 @@ fun TitleCard(
     lines: Int,
     single: Boolean,
     modifier: Modifier = Modifier
-){
-    Card (
+) {
+    Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(12.dp),
         elevation = CardDefaults.cardElevation(8.dp),
     ) {
 
-        Column (
+        Column(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
@@ -424,15 +600,15 @@ fun DescriptionCard(
     lines: Int,
     single: Boolean,
     modifier: Modifier = Modifier
-){
-    Card (
+) {
+    Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(12.dp),
         elevation = CardDefaults.cardElevation(8.dp),
     ) {
 
-        Column (
+        Column(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
@@ -530,7 +706,7 @@ fun RemindersCard(
                                 calendar.set(Calendar.YEAR, year)
                                 calendar.set(Calendar.MONTH, month)
                                 calendar.set(Calendar.DAY_OF_MONTH, day)
-                                
+
                                 TimePickerDialog(
                                     context,
                                     { _, hour, minute ->
@@ -553,7 +729,7 @@ fun RemindersCard(
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             if (reminders.isEmpty()) {
                 Text(stringResource(R.string.recordatorios_vacios), color = Color.Gray, fontSize = 13.sp)
             } else {
@@ -561,7 +737,9 @@ fun RemindersCard(
                     reminders.forEach { reminder ->
                         val formattedDate = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(reminder.remindAt)
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -606,14 +784,14 @@ fun AttachmentsCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(stringResource(R.string.archivos_adjuntos), fontWeight = FontWeight.Bold)
-                
+
                 Box {
                     Text(
                         stringResource(R.string.agregar_archivo),
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.clickable { expanded = true }
                     )
-                    
+
                     DropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false }
@@ -631,7 +809,7 @@ fun AttachmentsCard(
                             leadingIcon = { Icon(Icons.Default.Videocam, contentDescription = null) },
                             onClick = {
                                 expanded = false
-                                onAddFile()
+                                onAddVideo()
                             }
                         )
                         DropdownMenuItem(
@@ -653,19 +831,11 @@ fun AttachmentsCard(
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(8.dp))
             if (attachments.isEmpty()) {
-                 Text(stringResource(R.string.archivos_vacios), color = Color.Gray, fontSize = 13.sp)
+                Text(stringResource(R.string.archivos_vacios), color = Color.Gray, fontSize = 13.sp)
             }
         }
     }
 }
-
-//@Preview
-//@Composable
-//fun CreateEditPreview(){
-//    AppNotesTheme {
-//
-//    }
-//}
