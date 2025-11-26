@@ -13,10 +13,8 @@ class AlarmScheduler(private val context: Context) {
 
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-    // Mantenemos la firma anterior por compatibilidad, pero ahora solo programa la fecha de vencimiento principal si existe
     fun schedule(note: Note) {
         if (note.dueDateTime != null && !note.isCompleted) {
-             // Usamos un ID único para el recordatorio principal basado en el ID de la nota
              scheduleReminder(note.id, note.dueDateTime, note.title, "Tu tarea vence pronto!")
         } else {
              cancel(note)
@@ -34,7 +32,6 @@ class AlarmScheduler(private val context: Context) {
             putExtra("MESSAGE", message)
         }
 
-        // Usamos reminderId como requestCode para que sea único por cada recordatorio
         val pendingIntent = PendingIntent.getBroadcast(
             context,
             reminderId,
@@ -77,7 +74,6 @@ class AlarmScheduler(private val context: Context) {
     }
 
     fun cancel(note: Note) {
-        // Cancelar el recordatorio principal de la nota
         cancelReminder(note.id)
     }
     
