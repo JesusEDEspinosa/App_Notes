@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -307,8 +308,9 @@ fun NoteEntryForm (
         AttachmentsCard(
             attachments = attachments,
             onAddFile = { launcher.launch("*/*") },
-            onAddCamera = { /* Implement camera capture logic later */ },
-            onAddAudio = { /* Implement audio recording logic later */ }
+            onAddCamera = {  },
+            onAddVideo = {  },
+            onAddAudio = {  }
         )
 
         if (attachments.isNotEmpty()) {
@@ -522,7 +524,6 @@ fun RemindersCard(
                     stringResource(R.string.agregar_recordatorio),
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable {
-                        // Mostrar selectores de fecha y hora encadenados
                         val datePicker = DatePickerDialog(
                             context,
                             { _, year, month, day ->
@@ -585,6 +586,7 @@ fun AttachmentsCard(
     attachments: List<Attachment>,
     onAddFile: () -> Unit,
     onAddCamera: () -> Unit,
+    onAddVideo: () -> Unit,
     onAddAudio: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -622,6 +624,14 @@ fun AttachmentsCard(
                             onClick = {
                                 expanded = false
                                 onAddCamera()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Video") },
+                            leadingIcon = { Icon(Icons.Default.Videocam, contentDescription = null) },
+                            onClick = {
+                                expanded = false
+                                onAddFile()
                             }
                         )
                         DropdownMenuItem(
