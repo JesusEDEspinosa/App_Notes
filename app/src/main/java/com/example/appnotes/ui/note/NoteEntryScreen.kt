@@ -4,12 +4,15 @@ import android.Manifest
 import android.app.Activity
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -79,6 +82,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
 import com.example.appnotes.R
 import com.example.appnotes.data.Attachment
 import com.example.appnotes.data.Reminder
@@ -96,6 +100,7 @@ fun NoteEntryScreen(
     viewModel: NoteEntryViewModel = viewModel(factory = NoteEntryViewModelProvider.Factory)
 ) {
     val noteUiState by viewModel.noteUiState.collectAsState()
+    val context = LocalContext.current
 
     LaunchedEffect(noteId) {
         if (noteId != null) viewModel.loadNote(noteId)
@@ -117,6 +122,12 @@ fun NoteEntryScreen(
                         if (viewModel.isValidNote()) {
                             viewModel.saveNote()
                             navigateBack()
+                        } else {
+                            Toast.makeText(
+                                context,
+                                "Title and description cannot be empty",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     }
                 )
@@ -326,11 +337,29 @@ fun NoteEntryForm(
                 modifier = Modifier.padding(top = 8.dp)
             ) {
                 items(noteUiState.attachments) { att ->
-                    Box(modifier = Modifier.pointerInput(att) {
-                        detectTapGestures(
-                            onLongPress = { onRemoveAttachment(att) }
-                        )
-                    }) {
+                    Box(modifier = Modifier
+                        .pointerInput(att) {
+                            detectTapGestures(
+                                onLongPress = { onRemoveAttachment(att) }
+                            )
+                        }
+                        .clickable {
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                val uri = Uri.parse(att.uri)
+                                setDataAndType(uri, context.contentResolver.getType(uri))
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            try {
+                                context.startActivity(intent)
+                            } catch (e: ActivityNotFoundException) {
+                                Toast.makeText(
+                                    context,
+                                    "No app available to open this file.",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    ) {
                         when (att.type) {
                             "image" -> {
                                 Image(
@@ -343,25 +372,51 @@ fun NoteEntryForm(
                                 )
                             }
                             "video" -> {
-                                Icon(
-                                    Icons.Default.PlayArrow,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(60.dp)
+                                val painter = rememberAsyncImagePainter(
+                                    ImageRequest.Builder(LocalContext.current)
+                                        .data(att.uri)
+                                        .build()
+                                )
+                                Image(
+                                    painter = painter,
+                                    contentDescription = "Video thumbnail",
+                                    modifier = Modifier
+                                        .size(80.dp)
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    contentScale = ContentScale.Crop
                                 )
                             }
                             "audio" -> {
-                                Icon(
-                                    Icons.Default.Mic,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(60.dp)
-                                )
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .size(80.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(MaterialTheme.colorScheme.secondaryContainer)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Mic,
+                                        contentDescription = "Audio",
+                                        modifier = Modifier.size(40.dp),
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                }
                             }
                             else -> {
-                                Icon(
-                                    Icons.Default.Description,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(60.dp)
-                                )
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .size(80.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(MaterialTheme.colorScheme.tertiaryContainer)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Description,
+                                        contentDescription = "File",
+                                        modifier = Modifier.size(40.dp),
+                                        tint = MaterialTheme.colorScheme.onTertiaryContainer
+                                    )
+                                }
                             }
                         }
                     }
@@ -449,7 +504,7 @@ fun rememberAudioLauncher(onAddAttachment: (Attachment) -> Unit): AudioRecorderL
                 val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", tempAudioFile)
                 tempAudioUri = uri
 
-                val intent = android.content.Intent(android.provider.MediaStore.Audio.Media.RECORD_SOUND_ACTION)
+                val intent = Intent(android.provider.MediaStore.Audio.Media.RECORD_SOUND_ACTION)
                     .putExtra(android.provider.MediaStore.EXTRA_OUTPUT, uri)
                 audioLauncher.launch(intent)
             } else {
@@ -467,7 +522,7 @@ fun rememberAudioLauncher(onAddAttachment: (Attachment) -> Unit): AudioRecorderL
                         val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", tempAudioFile)
                         tempAudioUri = uri
 
-                        val intent = android.content.Intent(android.provider.MediaStore.Audio.Media.RECORD_SOUND_ACTION)
+                        val intent = Intent(android.provider.MediaStore.Audio.Media.RECORD_SOUND_ACTION)
                             .putExtra(android.provider.MediaStore.EXTRA_OUTPUT, uri)
                         audioLauncher.launch(intent)
                     }

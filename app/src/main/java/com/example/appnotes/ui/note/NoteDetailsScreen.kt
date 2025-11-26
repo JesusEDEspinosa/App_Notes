@@ -1,17 +1,19 @@
 package com.example.appnotes.ui.note
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,11 +25,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
 import com.example.appnotes.R
 import com.example.appnotes.data.NoteWithDetails
 import com.example.appnotes.ui.NoteDetailsViewModelProvider
-import com.example.appnotes.ui.navigation.HomeDestination
-import com.example.appnotes.ui.navigation.NavigationDestination
 import com.example.appnotes.ui.navigation.NoteEditDestination
 import java.text.SimpleDateFormat
 import java.util.*
@@ -49,7 +50,7 @@ fun NoteDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { NoteEditDestination.titleRes },
+                title = { Text(stringResource(id = R.string.detalle_nota)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.btn_volver))
@@ -69,13 +70,13 @@ fun NoteDetailScreen(
         },
         floatingActionButton = {
             noteWithDetails?.let {
-                ExtendedFloatingActionButton(
-                    onClick = { viewModel.toggleCompleted() },
-                    text = { Text(if (it.note.isCompleted) stringResource(R.string.marcar_pendiente) else stringResource(
-                        R.string.marcar_completada
-                    )) },
-                    icon = { Icon(Icons.Default.FavoriteBorder, contentDescription = null) }
-                )
+                if (it.note.isTask) {
+                    ExtendedFloatingActionButton(
+                        onClick = { viewModel.toggleCompleted() },
+                        text = { Text(if (it.note.isCompleted) stringResource(R.string.marcar_pendiente) else stringResource(R.string.marcar_completada)) },
+                        icon = { Icon(Icons.Default.Check, contentDescription = null) }
+                    )
+                }
             }
         }
     ) { innerPadding ->
@@ -139,11 +140,13 @@ fun NoteDetailContent(
                 text = note.note.title,
                 style = MaterialTheme.typography.titleLarge
             )
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = note.note.description,
                 style = MaterialTheme.typography.bodyLarge
             )
             if (note.note.isTask && note.note.dueDateTime != null) {
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = stringResource(
                         R.string.fecha_limite,
@@ -153,6 +156,7 @@ fun NoteDetailContent(
                 )
             }
             if (note.note.isCompleted) {
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = stringResource(R.string.tarea_completada),
                     color = MaterialTheme.colorScheme.primary,
@@ -171,26 +175,84 @@ fun NoteDetailContent(
         if (note.attachments.isNotEmpty()) {
             item { Text(stringResource(R.string.archivos_adjuntos), style = MaterialTheme.typography.titleMedium) }
             items(note.attachments) { att ->
-                when (att.type) {
-                    "image" -> {
-                        Image(
-                            painter = rememberAsyncImagePainter(att.uri),
-                            contentDescription = att.caption ?: "imagen adjunta",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(180.dp)
-                                .clip(RoundedCornerShape(12.dp)),
-                            contentScale = ContentScale.Crop
-                        )
+                Box(modifier = Modifier.clickable {
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        val uri = Uri.parse(att.uri)
+                        setDataAndType(uri, context.contentResolver.getType(uri))
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
-                    "video" -> {
-                        Text(context.getString(R.string.video_adjunto, att.caption ?: att.uri))
+                    try {
+                        context.startActivity(intent)
+                    } catch (e: ActivityNotFoundException) {
+                        Toast.makeText(
+                            context,
+                            "No app available to open this file.",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
-                    "audio" -> {
-                        Text(context.getString(R.string.audio_adjunto, att.caption ?: att.uri))
-                    }
-                    else -> {
-                        Text(context.getString(R.string.archivo, att.caption ?: att.uri))
+                }) {
+                    when (att.type) {
+                        "image" -> {
+                            Image(
+                                painter = rememberAsyncImagePainter(att.uri),
+                                contentDescription = att.caption ?: "imagen adjunta",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(180.dp)
+                                    .clip(RoundedCornerShape(12.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        "video" -> {
+                            val painter = rememberAsyncImagePainter(
+                                ImageRequest.Builder(LocalContext.current)
+                                    .data(att.uri)
+                                    .build()
+                            )
+                            Image(
+                                painter = painter,
+                                contentDescription = "Video thumbnail",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(180.dp)
+                                    .clip(RoundedCornerShape(12.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        "audio" -> {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(80.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                            ) {
+                                Icon(
+                                    Icons.Default.Mic,
+                                    contentDescription = "Audio",
+                                    modifier = Modifier.size(40.dp),
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
+                        else -> {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(80.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.tertiaryContainer)
+                            ) {
+                                Icon(
+                                    Icons.Default.Description,
+                                    contentDescription = "File",
+                                    modifier = Modifier.size(40.dp),
+                                    tint = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            }
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
