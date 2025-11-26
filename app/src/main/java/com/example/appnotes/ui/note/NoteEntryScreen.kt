@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,14 +27,19 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -296,10 +302,14 @@ fun NoteEntryForm (
                 onAttachmentsChange(attachments + newAttachment)
             }
         }
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = { launcher.launch("*/*") }) {
-            Text(stringResource(R.string.agregar_archivo))
-        }
+        
+        // Attachments Menu Logic
+        AttachmentsCard(
+            attachments = attachments,
+            onAddFile = { launcher.launch("*/*") },
+            onAddCamera = { /* Implement camera capture logic later */ },
+            onAddAudio = { /* Implement audio recording logic later */ }
+        )
 
         if (attachments.isNotEmpty()) {
             Spacer(modifier = Modifier.height(8.dp))
@@ -571,7 +581,14 @@ fun RemindersCard(
 }
 
 @Composable
-fun AttachmentsCard() {
+fun AttachmentsCard(
+    attachments: List<Attachment>,
+    onAddFile: () -> Unit,
+    onAddCamera: () -> Unit,
+    onAddAudio: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -587,14 +604,50 @@ fun AttachmentsCard() {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(stringResource(R.string.archivos_adjuntos), fontWeight = FontWeight.Bold)
-                Text(
-                    stringResource(R.string.agregar_archivo),
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable { }
-                )
+                
+                Box {
+                    Text(
+                        stringResource(R.string.agregar_archivo),
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable { expanded = true }
+                    )
+                    
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Cámara") },
+                            leadingIcon = { Icon(Icons.Default.CameraAlt, contentDescription = null) },
+                            onClick = {
+                                expanded = false
+                                onAddCamera()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Audio") },
+                            leadingIcon = { Icon(Icons.Default.Mic, contentDescription = null) },
+                            onClick = {
+                                expanded = false
+                                onAddAudio()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Archivo") },
+                            leadingIcon = { Icon(Icons.Default.Description, contentDescription = null) },
+                            onClick = {
+                                expanded = false
+                                onAddFile()
+                            }
+                        )
+                    }
+                }
             }
+            
             Spacer(modifier = Modifier.height(8.dp))
-            Text(stringResource(R.string.archivos_vacios), color = Color.Gray, fontSize = 13.sp)
+            if (attachments.isEmpty()) {
+                 Text(stringResource(R.string.archivos_vacios), color = Color.Gray, fontSize = 13.sp)
+            }
         }
     }
 }

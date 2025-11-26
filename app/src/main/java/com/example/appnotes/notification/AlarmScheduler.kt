@@ -27,7 +27,7 @@ class AlarmScheduler(private val context: Context) {
 
     private fun scheduleReminder(reminderId: Int, remindAt: Long, title: String, message: String) {
         val intent = Intent(context, NotificationReceiver::class.java).apply {
-            putExtra("NOTE_ID", reminderId) // Usamos el ID del recordatorio o nota como identificador único
+            putExtra("NOTE_ID", reminderId)
             putExtra("TITLE", title)
             putExtra("MESSAGE", message)
         }
