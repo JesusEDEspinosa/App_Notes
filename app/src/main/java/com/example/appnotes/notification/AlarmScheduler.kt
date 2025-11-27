@@ -15,19 +15,23 @@ class AlarmScheduler(private val context: Context) {
 
     fun schedule(note: Note) {
         if (note.dueDateTime != null && !note.isCompleted) {
-             scheduleReminder(note.id, note.dueDateTime, note.title, "Tu tarea vence pronto!")
+             // Para la nota principal, el ID del recordatorio es el ID de la nota, y el ID real también
+             scheduleReminder(note.id, note.id, note.dueDateTime, note.title, "Tu tarea vence pronto!")
         } else {
              cancel(note)
         }
     }
 
     fun schedule(reminder: Reminder, noteTitle: String) {
-        scheduleReminder(reminder.id, reminder.remindAt, "Recordatorio: $noteTitle", "Tienes un recordatorio programado")
+        // Para recordatorios adicionales, usamos el ID del recordatorio como ID único, 
+        // y reminder.noteId como el ID real de la nota para la navegación
+        scheduleReminder(reminder.id, reminder.noteId, reminder.remindAt, "Recordatorio: $noteTitle", "Tienes un recordatorio programado")
     }
 
-    private fun scheduleReminder(reminderId: Int, remindAt: Long, title: String, message: String) {
+    private fun scheduleReminder(reminderId: Int, realNoteId: Int, remindAt: Long, title: String, message: String) {
         val intent = Intent(context, NotificationReceiver::class.java).apply {
             putExtra("NOTE_ID", reminderId)
+            putExtra("REAL_NOTE_ID", realNoteId)
             putExtra("TITLE", title)
             putExtra("MESSAGE", message)
         }

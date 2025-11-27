@@ -17,21 +17,25 @@ class NotificationReceiver : BroadcastReceiver() {
         Log.d("NotificationReceiver", "onReceive called")
         
         val noteId = intent.getIntExtra("NOTE_ID", -1)
+        val realNoteId = intent.getIntExtra("REAL_NOTE_ID", -1)
         val title = intent.getStringExtra("TITLE") ?: "Tarea Pendiente"
         val message = intent.getStringExtra("MESSAGE") ?: "Tienes una tarea por completar"
 
-        Log.d("NotificationReceiver", "Note ID: $noteId, Title: $title")
+        Log.d("NotificationReceiver", "Note ID: $noteId, Real Note ID: $realNoteId, Title: $title")
 
         if (noteId != -1) {
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             
             val contentIntent = Intent(context, MainActivity::class.java).apply {
+                if (realNoteId != -1) {
+                    putExtra("NOTE_ID_TO_OPEN", realNoteId)
+                }
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             }
             
             val pendingContentIntent = PendingIntent.getActivity(
                 context, 
-                noteId, 
+                noteId,
                 contentIntent, 
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )

@@ -12,6 +12,23 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/*
+    Unidad 7 - Datos
+    -CRUD Nota/Tarea
+    -CRUD n Multimedia
+    -CRUD n Recordatorio
+    -Archivos
+    -Informe técnico final
+
+    Unidad 8 - Multimedia
+    Foto n
+    Audio n
+    Video n
+    Recurso del sistema System n
+    Notificaciones/Reprogramación n
+    Permisos en tiempo de ejecución n
+ */
+
 class NoteEntryViewModel(
     private val notesRepository: NotesRepository,
     private val alarmScheduler: AlarmScheduler
@@ -22,22 +39,12 @@ class NoteEntryViewModel(
     private var isEditMode = false
 
     fun loadNote(noteId: Int) {
-        // Evitar recargar la nota si ya estamos en modo edición con la misma nota
-        // Esto previene que se sobrescriban los cambios no guardados (como adjuntos) al rotar la pantalla
         if (isEditMode && _noteUiState.value.id == noteId) return
 
         viewModelScope.launch {
             notesRepository.getNote(noteId).collect { noteWithDetails ->
                 noteWithDetails?.let { safeNoteWithDetails ->
                     val note = safeNoteWithDetails.note
-                    
-                    // Solo actualizamos el estado desde la BD si NO estamos ya editando o si es la carga inicial
-                    // Sin embargo, como collect se queda escuchando, debemos tener cuidado.
-                    // Para una pantalla de edición, lo ideal es cargar los datos una vez.
-                    // Pero aquí, la protección principal es el chequeo al inicio de la función.
-                    // Si la corrutina sigue viva tras rotar, y la BD no cambia, no pasa nada.
-                    // Si la BD cambia externamente, esto sobrescribiría los cambios del usuario.
-                    // Para este caso de uso, asumimos que la BD no cambia externamente mientras se edita.
                     
                     _noteUiState.value = NoteUiState(
                         id = note.id,
@@ -89,7 +96,6 @@ class NoteEntryViewModel(
         currentAttachments.remove(attachment)
         _noteUiState.value = _noteUiState.value.copy(attachments = currentAttachments)
         
-        // Si ya existía en BD, lo borramos de inmediato para que sea "reactivo"
         if (attachment.id != 0) {
             viewModelScope.launch {
                 notesRepository.deleteAttachment(attachment)
@@ -118,8 +124,6 @@ class NoteEntryViewModel(
                 
                 notesRepository.deleteRemindersByNoteId(noteId)
                 alarmScheduler.cancel(note)
-                // Ya no borramos todos los adjuntos para evitar borrar y recrear innecesariamente.
-                // Los eliminados se manejaron en removeAttachment
             } else {
                 val newId = notesRepository.insertNote(note)
                 noteId = newId.toInt()
@@ -137,7 +141,6 @@ class NoteEntryViewModel(
             }
 
             noteUi.attachments.forEach { att ->
-                // Solo insertamos los nuevos (id == 0)
                 if (att.id == 0) {
                      notesRepository.addAttachment(att.copy(noteId = noteId))
                 }

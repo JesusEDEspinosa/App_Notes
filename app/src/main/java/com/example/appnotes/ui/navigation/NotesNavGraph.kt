@@ -1,8 +1,12 @@
 package com.example.appnotes.ui.navigation
 
+import android.app.Activity
+import android.content.Intent
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -18,6 +22,21 @@ fun NotesNavGraph(
     modifier: Modifier = Modifier
 ) {
     val navController = rememberNavController()
+    val context = LocalContext.current
+    
+    // Manejar la intención de notificación para navegar
+    LaunchedEffect(Unit) {
+        val activity = context as? Activity
+        val intent = activity?.intent
+        if (intent != null && intent.hasExtra("NOTE_ID_TO_OPEN")) {
+            val noteId = intent.getIntExtra("NOTE_ID_TO_OPEN", -1)
+            if (noteId != -1) {
+                navController.navigate("${NoteDetailDestination.route}/$noteId")
+                // Limpiar el extra para evitar re-navegación al rotar o recrear
+                intent.removeExtra("NOTE_ID_TO_OPEN")
+            }
+        }
+    }
 
     NavHost(
         navController = navController,

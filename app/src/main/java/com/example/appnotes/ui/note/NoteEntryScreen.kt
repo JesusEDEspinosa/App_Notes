@@ -183,13 +183,12 @@ fun NoteEntryForm(
 ) {
     val context = LocalContext.current
     val calendar = remember { Calendar.getInstance() }
-    // Agregar estado de desplazamiento para permitir desplazarse
     val scrollState = rememberScrollState()
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(scrollState), // Habilitar desplazamiento vertical
+            .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         TitleCard(
@@ -350,7 +349,6 @@ fun NoteEntryForm(
                     Box(modifier = Modifier
                         .size(80.dp)
                     ) {
-                        // Contenido del archivo
                         Box(modifier = Modifier
                             .fillMaxSize()
                             .clickable {
@@ -431,7 +429,6 @@ fun NoteEntryForm(
                             }
                         }
                         
-                        // Botón de eliminar (X) superpuesto
                         IconButton(
                             onClick = { onRemoveAttachment(att) },
                             modifier = Modifier
@@ -451,7 +448,6 @@ fun NoteEntryForm(
                 }
             }
         }
-        // Se agrega un espaciador en la parte inferior para permitir el desplazamiento más allá del último elemento cómodamente
         Spacer(modifier = Modifier.height(80.dp))
     }
 }
