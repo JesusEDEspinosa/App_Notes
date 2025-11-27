@@ -29,8 +29,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
@@ -63,6 +65,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -177,9 +180,13 @@ fun NoteEntryForm(
 ) {
     val context = LocalContext.current
     val calendar = remember { Calendar.getInstance() }
+    // Add scroll state to allow scrolling
+    val scrollState = rememberScrollState()
 
     Column(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState), // Enable vertical scrolling
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         TitleCard(
@@ -423,14 +430,15 @@ fun NoteEntryForm(
                 }
             }
         }
-
+        // Added spacer at the bottom to allow scrolling past the last element comfortably
+        Spacer(modifier = Modifier.height(80.dp))
     }
 }
 
 @Composable
 fun rememberCameraLauncher(onAddAttachment: (Attachment) -> Unit): CameraLauncher {
     val context = LocalContext.current
-    var tempImageUri by remember { mutableStateOf<Uri?>(null) }
+    var tempImageUri by rememberSaveable { mutableStateOf<Uri?>(null) }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture(),
@@ -483,7 +491,7 @@ interface CameraLauncher {
 @Composable
 fun rememberAudioLauncher(onAddAttachment: (Attachment) -> Unit): AudioRecorderLauncher {
     val context = LocalContext.current
-    var tempAudioUri by remember { mutableStateOf<Uri?>(null) }
+    var tempAudioUri by rememberSaveable { mutableStateOf<Uri?>(null) }
 
     val audioLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -542,7 +550,7 @@ interface AudioRecorderLauncher {
 @Composable
 fun rememberVideoLauncher(onAddAttachment: (Attachment) -> Unit): VideoLauncher {
     val context = LocalContext.current
-    var tempVideoUri by remember { mutableStateOf<Uri?>(null) }
+    var tempVideoUri by rememberSaveable { mutableStateOf<Uri?>(null) }
 
     val videoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CaptureVideo(),

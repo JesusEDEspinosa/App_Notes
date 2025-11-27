@@ -22,10 +22,23 @@ class NoteEntryViewModel(
     private var isEditMode = false
 
     fun loadNote(noteId: Int) {
+        // Evitar recargar la nota si ya estamos en modo edición con la misma nota
+        // Esto previene que se sobrescriban los cambios no guardados (como adjuntos) al rotar la pantalla
+        if (isEditMode && _noteUiState.value.id == noteId) return
+
         viewModelScope.launch {
             notesRepository.getNote(noteId).collect { noteWithDetails ->
                 noteWithDetails?.let { safeNoteWithDetails ->
-                    val note = noteWithDetails.note
+                    val note = safeNoteWithDetails.note
+                    
+                    // Solo actualizamos el estado desde la BD si NO estamos ya editando o si es la carga inicial
+                    // Sin embargo, como collect se queda escuchando, debemos tener cuidado.
+                    // Para una pantalla de edición, lo ideal es cargar los datos una vez.
+                    // Pero aquí, la protección principal es el chequeo al inicio de la función.
+                    // Si la corrutina sigue viva tras rotar, y la BD no cambia, no pasa nada.
+                    // Si la BD cambia externamente, esto sobrescribiría los cambios del usuario.
+                    // Para este caso de uso, asumimos que la BD no cambia externamente mientras se edita.
+                    
                     _noteUiState.value = NoteUiState(
                         id = note.id,
                         title = note.title,
