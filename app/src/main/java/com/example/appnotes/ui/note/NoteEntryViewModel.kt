@@ -88,6 +88,13 @@ class NoteEntryViewModel(
         val currentAttachments = _noteUiState.value.attachments.toMutableList()
         currentAttachments.remove(attachment)
         _noteUiState.value = _noteUiState.value.copy(attachments = currentAttachments)
+        
+        // Si ya existía en BD, lo borramos de inmediato para que sea "reactivo"
+        if (attachment.id != 0) {
+            viewModelScope.launch {
+                notesRepository.deleteAttachment(attachment)
+            }
+        }
     }
 
     fun saveNote() {
@@ -111,7 +118,8 @@ class NoteEntryViewModel(
                 
                 notesRepository.deleteRemindersByNoteId(noteId)
                 alarmScheduler.cancel(note)
-                notesRepository.deleteAttachmentsByNoteId(noteId) // Also clear old attachments
+                // Ya no borramos todos los adjuntos para evitar borrar y recrear innecesariamente.
+                // Los eliminados se manejaron en removeAttachment
             } else {
                 val newId = notesRepository.insertNote(note)
                 noteId = newId.toInt()
@@ -129,7 +137,10 @@ class NoteEntryViewModel(
             }
 
             noteUi.attachments.forEach { att ->
-                notesRepository.addAttachment(att.copy(noteId = noteId, id = 0))
+                // Solo insertamos los nuevos (id == 0)
+                if (att.id == 0) {
+                     notesRepository.addAttachment(att.copy(noteId = noteId))
+                }
             }
         }
     }

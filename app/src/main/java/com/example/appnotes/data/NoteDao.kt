@@ -30,18 +30,21 @@ interface NoteDao {
 
 
 
-    //Reminders
+    //Recordatorios
     @Insert
     suspend fun insertReminder(reminder: Reminder): Long
 
     @Query("DELETE FROM reminders WHERE noteId = :noteId")
     suspend fun deleteRemindersByNoteId(noteId: Int)
 
-    //Attachments
+    //Archivos Adjuntos
     @Insert
     suspend fun insertAttachment(attachment: Attachment)
 
     @Query("DELETE FROM attachments WHERE noteId = :noteId")
     suspend fun deleteAttachmentsByNoteId(noteId: Int)
+
+    @Delete
+    suspend fun deleteAttachment(attachment: Attachment)
 
 }

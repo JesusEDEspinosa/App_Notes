@@ -33,5 +33,5 @@
     <string name="agregar_recordatorio">+ Add reminder</string>
     <string name="recordatorios_vacios">No reminders added</string>
     <string name="archivos_vacios">No attachments added</string>
-    <string name="detalle_nota">detalle_nota</string>
+    <string name="detalle_nota">Details</string>
 </resources>

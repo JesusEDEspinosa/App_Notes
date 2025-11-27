@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -37,6 +38,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Mic
@@ -53,6 +55,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -128,7 +131,7 @@ fun NoteEntryScreen(
                         } else {
                             Toast.makeText(
                                 context,
-                                "Title and description cannot be empty",
+                                "El título y la descripción no pueden estar vacíos",
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -180,13 +183,13 @@ fun NoteEntryForm(
 ) {
     val context = LocalContext.current
     val calendar = remember { Calendar.getInstance() }
-    // Add scroll state to allow scrolling
+    // Agregar estado de desplazamiento para permitir desplazarse
     val scrollState = rememberScrollState()
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(scrollState), // Enable vertical scrolling
+            .verticalScroll(scrollState), // Habilitar desplazamiento vertical
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         TitleCard(
@@ -345,92 +348,110 @@ fun NoteEntryForm(
             ) {
                 items(noteUiState.attachments) { att ->
                     Box(modifier = Modifier
-                        .pointerInput(att) {
-                            detectTapGestures(
-                                onLongPress = { onRemoveAttachment(att) }
-                            )
-                        }
-                        .clickable {
-                            val intent = Intent(Intent.ACTION_VIEW).apply {
-                                val uri = Uri.parse(att.uri)
-                                setDataAndType(uri, context.contentResolver.getType(uri))
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            }
-                            try {
-                                context.startActivity(intent)
-                            } catch (e: ActivityNotFoundException) {
-                                Toast.makeText(
-                                    context,
-                                    "No app available to open this file.",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                        }
+                        .size(80.dp)
                     ) {
-                        when (att.type) {
-                            "image" -> {
-                                Image(
-                                    painter = rememberAsyncImagePainter(att.uri),
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(80.dp)
-                                        .clip(RoundedCornerShape(8.dp)),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                            "video" -> {
-                                val painter = rememberAsyncImagePainter(
-                                    ImageRequest.Builder(LocalContext.current)
-                                        .data(att.uri)
-                                        .build()
-                                )
-                                Image(
-                                    painter = painter,
-                                    contentDescription = "Video thumbnail",
-                                    modifier = Modifier
-                                        .size(80.dp)
-                                        .clip(RoundedCornerShape(8.dp)),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                            "audio" -> {
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier
-                                        .size(80.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(MaterialTheme.colorScheme.secondaryContainer)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Mic,
-                                        contentDescription = "Audio",
-                                        modifier = Modifier.size(40.dp),
-                                        tint = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
+                        // Contenido del archivo
+                        Box(modifier = Modifier
+                            .fillMaxSize()
+                            .clickable {
+                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                    val uri = Uri.parse(att.uri)
+                                    setDataAndType(uri, context.contentResolver.getType(uri))
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                try {
+                                    context.startActivity(intent)
+                                } catch (e: ActivityNotFoundException) {
+                                    Toast.makeText(
+                                        context,
+                                        "No hay aplicación disponible para abrir este archivo.",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 }
                             }
-                            else -> {
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier
-                                        .size(80.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(MaterialTheme.colorScheme.tertiaryContainer)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Description,
-                                        contentDescription = "File",
-                                        modifier = Modifier.size(40.dp),
-                                        tint = MaterialTheme.colorScheme.onTertiaryContainer
+                        ) {
+                            when (att.type) {
+                                "image" -> {
+                                    Image(
+                                        painter = rememberAsyncImagePainter(att.uri),
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(RoundedCornerShape(8.dp)),
+                                        contentScale = ContentScale.Crop
                                     )
                                 }
+                                "video" -> {
+                                    val painter = rememberAsyncImagePainter(
+                                        ImageRequest.Builder(LocalContext.current)
+                                            .data(att.uri)
+                                            .build()
+                                    )
+                                    Image(
+                                        painter = painter,
+                                        contentDescription = "Miniatura de video",
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(RoundedCornerShape(8.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                                "audio" -> {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(MaterialTheme.colorScheme.secondaryContainer)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Mic,
+                                            contentDescription = "Audio",
+                                            modifier = Modifier.size(40.dp),
+                                            tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                        )
+                                    }
+                                }
+                                else -> {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(MaterialTheme.colorScheme.tertiaryContainer)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Description,
+                                            contentDescription = "Archivo",
+                                            modifier = Modifier.size(40.dp),
+                                            tint = MaterialTheme.colorScheme.onTertiaryContainer
+                                        )
+                                    }
+                                }
                             }
+                        }
+                        
+                        // Botón de eliminar (X) superpuesto
+                        IconButton(
+                            onClick = { onRemoveAttachment(att) },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .size(24.dp)
+                                .background(Color.White.copy(alpha = 0.7f), CircleShape)
+                                .padding(2.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Eliminar adjunto",
+                                tint = Color.Black,
+                                modifier = Modifier.size(16.dp)
+                            )
                         }
                     }
                 }
             }
         }
-        // Added spacer at the bottom to allow scrolling past the last element comfortably
+        // Se agrega un espaciador en la parte inferior para permitir el desplazamiento más allá del último elemento cómodamente
         Spacer(modifier = Modifier.height(80.dp))
     }
 }
@@ -461,7 +482,7 @@ fun rememberCameraLauncher(onAddAttachment: (Attachment) -> Unit): CameraLaunche
             tempImageUri = uri
             cameraLauncher.launch(uri)
         } else {
-            Toast.makeText(context, "Camera permission denied", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -516,7 +537,7 @@ fun rememberAudioLauncher(onAddAttachment: (Attachment) -> Unit): AudioRecorderL
                     .putExtra(android.provider.MediaStore.EXTRA_OUTPUT, uri)
                 audioLauncher.launch(intent)
             } else {
-                Toast.makeText(context, "Audio recording permission denied.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Permiso de grabación de audio denegado.", Toast.LENGTH_SHORT).show()
             }
         }
     )
@@ -573,7 +594,7 @@ fun rememberVideoLauncher(onAddAttachment: (Attachment) -> Unit): VideoLauncher 
                 tempVideoUri = uri
                 videoLauncher.launch(uri)
             } else {
-                Toast.makeText(context, "Camera permission denied.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Permiso de cámara denegado.", Toast.LENGTH_SHORT).show()
             }
         }
     )

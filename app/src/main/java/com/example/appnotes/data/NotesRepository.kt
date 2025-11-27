@@ -10,6 +10,7 @@ interface NotesRepository {
     suspend fun deleteNote(note: Note)
     suspend fun addReminder(reminder: Reminder): Long
     suspend fun addAttachment(attachment: Attachment)
+    suspend fun deleteAttachment(attachment: Attachment)
     suspend fun deleteRemindersByNoteId(noteId: Int)
     suspend fun deleteAttachmentsByNoteId(noteId: Int)
 }
