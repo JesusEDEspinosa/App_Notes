@@ -21,7 +21,6 @@ class AlarmScheduler(private val context: Context) {
              cancel(note)
         }
     }
-
     fun schedule(reminder: Reminder, noteTitle: String) {
         // Para recordatorios adicionales, usamos el ID del recordatorio como ID único, 
         // y reminder.noteId como el ID real de la nota para la navegación

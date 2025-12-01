@@ -12,23 +12,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/*
-    Unidad 7 - Datos
-    -CRUD Nota/Tarea
-    -CRUD n Multimedia
-    -CRUD n Recordatorio
-    -Archivos
-    -Informe técnico final
-
-    Unidad 8 - Multimedia
-    Foto n
-    Audio n
-    Video n
-    Recurso del sistema System n
-    Notificaciones/Reprogramación n
-    Permisos en tiempo de ejecución n
- */
-
 class NoteEntryViewModel(
     private val notesRepository: NotesRepository,
     private val alarmScheduler: AlarmScheduler
