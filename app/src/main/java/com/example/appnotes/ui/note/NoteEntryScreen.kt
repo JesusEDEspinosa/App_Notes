@@ -8,6 +8,7 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -416,6 +417,7 @@ fun rememberCameraLauncher(onAddAttachment: (Attachment) -> Unit): CameraLaunche
             cameraLauncher.launch(uri)
         } else {
             Toast.makeText(context, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show()
+            (context as? Activity)?.let { openAppSettings(it) }
         }
     }
 
@@ -471,6 +473,7 @@ fun rememberAudioLauncher(onAddAttachment: (Attachment) -> Unit): AudioRecorderL
                 audioLauncher.launch(intent)
             } else {
                 Toast.makeText(context, "Permiso de grabación de audio denegado.", Toast.LENGTH_SHORT).show()
+                (context as? Activity)?.let { openAppSettings(it) }
             }
         }
     )
@@ -528,6 +531,7 @@ fun rememberVideoLauncher(onAddAttachment: (Attachment) -> Unit): VideoLauncher 
                 videoLauncher.launch(uri)
             } else {
                 Toast.makeText(context, "Permiso de cámara denegado.", Toast.LENGTH_SHORT).show()
+                (context as? Activity)?.let { openAppSettings(it) }
             }
         }
     )
@@ -553,6 +557,15 @@ fun rememberVideoLauncher(onAddAttachment: (Attachment) -> Unit): VideoLauncher 
 
 interface VideoLauncher {
     fun captureVideo()
+}
+
+private fun openAppSettings(activity: Activity) {
+    Intent(
+        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+        Uri.fromParts("package", activity.packageName, null)
+    ).also {
+        activity.startActivity(it)
+    }
 }
 
 
