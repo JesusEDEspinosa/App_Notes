@@ -66,8 +66,9 @@ dependencies {
 
     implementation("androidx.compose.material3:material3-window-size-class:1.4.0")
 
-    implementation("androidx.media3:media3-exoplayer:1.3.1")
-    implementation("androidx.media3:media3-ui:1.3.1")
+    implementation("androidx.media3:media3-exoplayer:1.2.0")
+    implementation("androidx.media3:media3-ui:1.2.0")
+    implementation("androidx.media3:media3-common:1.2.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

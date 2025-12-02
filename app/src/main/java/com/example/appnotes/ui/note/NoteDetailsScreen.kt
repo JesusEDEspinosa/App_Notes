@@ -34,6 +34,7 @@ import com.example.appnotes.ui.NoteDetailsViewModelProvider
 import com.example.appnotes.ui.navigation.NoteEditDestination
 import java.text.SimpleDateFormat
 import java.util.*
+import com.example.appnotes.AudioPlayer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -132,7 +133,7 @@ fun NoteDetailContent(
     val context = LocalContext.current
     var viewingAttachment by remember { mutableStateOf<Attachment?>(null) }
 
-    if (viewingAttachment != null) {
+    if (viewingAttachment != null && viewingAttachment?.type != "audio") {
         Dialog(onDismissRequest = { viewingAttachment = null }) {
             MediaViewer(uri = viewingAttachment!!.uri, type = viewingAttachment!!.type)
         }
@@ -214,20 +215,24 @@ fun NoteDetailContent(
                             )
                         }
                         "audio" -> {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(80.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(MaterialTheme.colorScheme.secondaryContainer)
-                            ) {
-                                Icon(
-                                    Icons.Default.Mic,
-                                    contentDescription = "Audio",
-                                    modifier = Modifier.size(40.dp),
-                                    tint = MaterialTheme.colorScheme.onSecondaryContainer
-                                )
+                            if (viewingAttachment?.uri == att.uri) {
+                                AudioPlayer(uri = att.uri)
+                            } else {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(80.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(MaterialTheme.colorScheme.secondaryContainer)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Mic,
+                                        contentDescription = "Audio",
+                                        modifier = Modifier.size(40.dp),
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                }
                             }
                         }
                         else -> {

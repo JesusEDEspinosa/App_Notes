@@ -1,3 +1,4 @@
+
 package com.example.appnotes.ui.note
 
 import android.Manifest
@@ -99,6 +100,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import com.example.appnotes.AudioRecorderImpl
 
 @Composable
 fun NoteEntryScreen(
@@ -257,13 +259,22 @@ fun NoteEntryForm(
         val cameraLauncher = rememberCameraLauncher(onAddAttachment = onAddAttachment)
         val audioLauncher = rememberAudioLauncher(onAddAttachment = onAddAttachment)
         val videoLauncher = rememberVideoLauncher(onAddAttachment = onAddAttachment)
+        var isRecording by remember { mutableStateOf(false) }
 
         AttachmentsCard(
             attachments = noteUiState.attachments,
             onAddFile = { fileLauncher.launch("*/*") },
             onAddCamera = { cameraLauncher.captureImage() },
             onAddVideo = { videoLauncher.captureVideo() },
-            onAddAudio = { audioLauncher.recordAudio() }
+            onAddAudio = {
+                audioLauncher.recordAudio()
+                isRecording = true
+            },
+            onStopAudio = {
+                audioLauncher.stopRecording()
+                isRecording = false
+            },
+            isRecording = isRecording
         )
 
         if (noteUiState.attachments.isNotEmpty()) {
@@ -426,30 +437,16 @@ interface CameraLauncher {
 @Composable
 fun rememberAudioLauncher(onAddAttachment: (Attachment) -> Unit): AudioRecorderLauncher {
     val context = LocalContext.current
-    var tempAudioUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    val recorder = remember { AudioRecorderImpl(context) }
+    var tempAudioFile by remember { mutableStateOf<File?>(null) }
 
-    val audioLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            tempAudioUri?.let { uri ->
-                val newAttachment = Attachment(noteId = 0, uri = uri.toString(), type = "audio")
-                onAddAttachment(newAttachment)
-            }
-        }
-    }
-
-    val recordAudioPermissionLauncher = rememberLauncherForActivityResult(
+    val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted ->
             if (isGranted) {
-                val tempAudioFile = File.createTempFile("AAC_", ".aac", context.externalCacheDir)
-                val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", tempAudioFile)
-                tempAudioUri = uri
-
-                val intent = Intent(android.provider.MediaStore.Audio.Media.RECORD_SOUND_ACTION)
-                    .putExtra(android.provider.MediaStore.EXTRA_OUTPUT, uri)
-                audioLauncher.launch(intent)
+                val tempFile = File.createTempFile("AAC_", ".aac", context.externalCacheDir)
+                recorder.start(tempFile)
+                tempAudioFile = tempFile
             } else {
                 Toast.makeText(context, "Permiso de grabación de audio denegado.", Toast.LENGTH_SHORT).show()
                 (context as? Activity)?.let { openAppSettings(it) }
@@ -460,20 +457,23 @@ fun rememberAudioLauncher(onAddAttachment: (Attachment) -> Unit): AudioRecorderL
     return remember {
         object : AudioRecorderLauncher {
             override fun recordAudio() {
-                when (PackageManager.PERMISSION_GRANTED) {
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) -> {
-                        val tempAudioFile = File.createTempFile("AAC_", ".aac", context.externalCacheDir)
-                        val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", tempAudioFile)
-                        tempAudioUri = uri
-
-                        val intent = Intent(android.provider.MediaStore.Audio.Media.RECORD_SOUND_ACTION)
-                            .putExtra(android.provider.MediaStore.EXTRA_OUTPUT, uri)
-                        audioLauncher.launch(intent)
-                    }
-                    else -> {
-                        recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                    }
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    val tempFile = File.createTempFile("AAC_", ".aac", context.externalCacheDir)
+                    recorder.start(tempFile)
+                    tempAudioFile = tempFile
+                } else {
+                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                 }
+            }
+
+            override fun stopRecording() {
+                recorder.stop()
+                tempAudioFile?.let {
+                    val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", it)
+                    val newAttachment = Attachment(noteId = 0, uri = uri.toString(), type = "audio")
+                    onAddAttachment(newAttachment)
+                }
+                tempAudioFile = null
             }
         }
     }
@@ -481,6 +481,7 @@ fun rememberAudioLauncher(onAddAttachment: (Attachment) -> Unit): AudioRecorderL
 
 interface AudioRecorderLauncher {
     fun recordAudio()
+    fun stopRecording()
 }
 
 @Composable
@@ -803,7 +804,9 @@ fun AttachmentsCard(
     onAddFile: () -> Unit,
     onAddCamera: () -> Unit,
     onAddVideo: () -> Unit,
-    onAddAudio: () -> Unit
+    onAddAudio: () -> Unit,
+    onStopAudio: () -> Unit,
+    isRecording: Boolean
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -823,56 +826,70 @@ fun AttachmentsCard(
             ) {
                 Text(stringResource(R.string.archivos_adjuntos), fontWeight = FontWeight.Bold)
 
-                Box {
-                    Text(
-                        stringResource(R.string.agregar_archivo),
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable { expanded = true }
-                    )
+                if (!isRecording) {
+                    Box {
+                        Text(
+                            stringResource(R.string.agregar_archivo),
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable { expanded = true }
+                        )
 
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Cámara") },
-                            leadingIcon = { Icon(Icons.Default.CameraAlt, contentDescription = null) },
-                            onClick = {
-                                expanded = false
-                                onAddCamera()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Video") },
-                            leadingIcon = { Icon(Icons.Default.Videocam, contentDescription = null) },
-                            onClick = {
-                                expanded = false
-                                onAddVideo()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Audio") },
-                            leadingIcon = { Icon(Icons.Default.Mic, contentDescription = null) },
-                            onClick = {
-                                expanded = false
-                                onAddAudio()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Archivo") },
-                            leadingIcon = { Icon(Icons.Default.Description, contentDescription = null) },
-                            onClick = {
-                                expanded = false
-                                onAddFile()
-                            }
-                        )
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Cámara") },
+                                leadingIcon = { Icon(Icons.Default.CameraAlt, contentDescription = null) },
+                                onClick = {
+                                    expanded = false
+                                    onAddCamera()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Video") },
+                                leadingIcon = { Icon(Icons.Default.Videocam, contentDescription = null) },
+                                onClick = {
+                                    expanded = false
+                                    onAddVideo()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Grabar audio") },
+                                leadingIcon = { Icon(Icons.Default.Mic, contentDescription = null) },
+                                onClick = {
+                                    expanded = false
+                                    onAddAudio()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Archivo") },
+                                leadingIcon = { Icon(Icons.Default.Description, contentDescription = null) },
+                                onClick = {
+                                    expanded = false
+                                    onAddFile()
+                                }
+                            )
+                        }
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            if (attachments.isEmpty()) {
+            if (attachments.isEmpty() && !isRecording) {
                 Text(stringResource(R.string.archivos_vacios), color = Color.Gray, fontSize = 13.sp)
+            }
+
+            if (isRecording) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(onClick = onStopAudio) {
+                        Text("Detener grabación")
+                    }
+                }
             }
         }
     }
