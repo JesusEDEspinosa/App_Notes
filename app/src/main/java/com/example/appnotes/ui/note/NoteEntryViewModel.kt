@@ -56,6 +56,15 @@ class NoteEntryViewModel(
         _noteUiState.value = _noteUiState.value.copy(reminders = currentReminders)
     }
 
+    fun updateReminder(oldReminder: Reminder, newRemindAt: Long) {
+        val currentReminders = _noteUiState.value.reminders.toMutableList()
+        val index = currentReminders.indexOf(oldReminder)
+        if (index != -1) {
+            currentReminders[index] = oldReminder.copy(remindAt = newRemindAt)
+            _noteUiState.value = _noteUiState.value.copy(reminders = currentReminders)
+        }
+    }
+
     fun removeReminder(reminder: Reminder) {
         val currentReminders = _noteUiState.value.reminders.toMutableList()
         currentReminders.remove(reminder)
@@ -102,6 +111,13 @@ class NoteEntryViewModel(
             val noteId: Int
             
             if (isEditMode) {
+                // Cancelar alarmas de recordatorios que van a ser reemplazados
+                noteUi.reminders.forEach { reminder ->
+                    if (reminder.id != 0) {
+                        alarmScheduler.cancel(reminder)
+                    }
+                }
+
                 notesRepository.updateNote(note)
                 noteId = note.id
                 

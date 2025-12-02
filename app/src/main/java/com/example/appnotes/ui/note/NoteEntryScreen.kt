@@ -145,6 +145,7 @@ fun NoteEntryScreen(
                 noteUiState,
                 onValueChange = viewModel::updateUiState,
                 onAddReminder = viewModel::addReminder,
+                onUpdateReminder = viewModel::updateReminder,
                 onRemoveReminder = viewModel::removeReminder,
                 onAddAttachment = viewModel::addAttachment,
                 onRemoveAttachment = viewModel::removeAttachment,
@@ -178,6 +179,7 @@ fun NoteEntryForm(
     noteUiState: NoteUiState,
     onValueChange: (NoteUiState) -> Unit,
     onAddReminder: (Long) -> Unit,
+    onUpdateReminder: (Reminder, Long) -> Unit,
     onRemoveReminder: (Reminder) -> Unit,
     onAddAttachment: (Attachment) -> Unit,
     onRemoveAttachment: (Attachment) -> Unit,
@@ -226,6 +228,7 @@ fun NoteEntryForm(
             RemindersCard(
                 reminders = noteUiState.reminders,
                 onAddReminder = onAddReminder,
+                onUpdateReminder = onUpdateReminder,
                 onRemoveReminder = onRemoveReminder
             )
         }
@@ -682,6 +685,7 @@ fun ConvertToTaskCard(
 fun RemindersCard(
     reminders: List<Reminder>,
     onAddReminder: (Long) -> Unit,
+    onUpdateReminder: (Reminder, Long) -> Unit,
     onRemoveReminder: (Reminder) -> Unit
 ) {
     val context = LocalContext.current
@@ -745,7 +749,35 @@ fun RemindersCard(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp),
+                                .padding(vertical = 4.dp)
+                                .clickable {
+                                    val cal = Calendar.getInstance().apply { timeInMillis = reminder.remindAt }
+                                    val datePicker = DatePickerDialog(
+                                        context,
+                                        { _, year, month, day ->
+                                            cal.set(Calendar.YEAR, year)
+                                            cal.set(Calendar.MONTH, month)
+                                            cal.set(Calendar.DAY_OF_MONTH, day)
+
+                                            TimePickerDialog(
+                                                context,
+                                                { _, hour, minute ->
+                                                    cal.set(Calendar.HOUR_OF_DAY, hour)
+                                                    cal.set(Calendar.MINUTE, minute)
+                                                    cal.set(Calendar.SECOND, 0)
+                                                    onUpdateReminder(reminder, cal.timeInMillis)
+                                                },
+                                                cal.get(Calendar.HOUR_OF_DAY),
+                                                cal.get(Calendar.MINUTE),
+                                                true
+                                            ).show()
+                                        },
+                                        cal.get(Calendar.YEAR),
+                                        cal.get(Calendar.MONTH),
+                                        cal.get(Calendar.DAY_OF_MONTH)
+                                    )
+                                    datePicker.show()
+                                },
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
