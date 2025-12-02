@@ -22,11 +22,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.example.appnotes.R
+import com.example.appnotes.data.Attachment
 import com.example.appnotes.data.NoteWithDetails
 import com.example.appnotes.ui.NoteDetailsViewModelProvider
 import com.example.appnotes.ui.navigation.NoteEditDestination
@@ -128,6 +130,13 @@ fun NoteDetailContent(
 ) {
     val sdf = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
     val context = LocalContext.current
+    var viewingAttachment by remember { mutableStateOf<Attachment?>(null) }
+
+    if (viewingAttachment != null) {
+        Dialog(onDismissRequest = { viewingAttachment = null }) {
+            MediaViewer(uri = viewingAttachment!!.uri, type = viewingAttachment!!.type)
+        }
+    }
 
     LazyColumn(
         modifier = modifier
@@ -175,22 +184,7 @@ fun NoteDetailContent(
         if (note.attachments.isNotEmpty()) {
             item { Text(stringResource(R.string.archivos_adjuntos), style = MaterialTheme.typography.titleMedium) }
             items(note.attachments) { att ->
-                Box(modifier = Modifier.clickable {
-                    val intent = Intent(Intent.ACTION_VIEW).apply {
-                        val uri = Uri.parse(att.uri)
-                        setDataAndType(uri, context.contentResolver.getType(uri))
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    try {
-                        context.startActivity(intent)
-                    } catch (e: ActivityNotFoundException) {
-                        Toast.makeText(
-                            context,
-                            "No app available to open this file.",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }) {
+                Box(modifier = Modifier.clickable { viewingAttachment = att }) {
                     when (att.type) {
                         "image" -> {
                             Image(
