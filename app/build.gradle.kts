@@ -52,18 +52,12 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.foundation)
-    implementation(platform(libs.androidx.compose.bom.v20241201))
-    implementation(libs.androidx.lifecycle.runtime.ktx.v287)
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
     implementation("androidx.navigation:navigation-compose:2.9.5")
-    implementation(libs.androidx.compose.material3.v131)
     implementation("androidx.compose.material:material-icons-extended:1.7.8")
 
     //Room
     implementation("androidx.room:room-runtime:${rootProject.extra["room_version"]}")
-    implementation(libs.androidx.foundation)
-    implementation(libs.androidx.ui)
-    implementation(libs.androidx.material3)
     ksp("androidx.room:room-compiler:${rootProject.extra["room_version"]}")
     implementation("androidx.room:room-ktx:${rootProject.extra["room_version"]}")
 
@@ -71,6 +65,9 @@ dependencies {
     implementation("io.coil-kt:coil-video:2.7.0")
 
     implementation("androidx.compose.material3:material3-window-size-class:1.4.0")
+
+    implementation("androidx.media3:media3-exoplayer:1.3.1")
+    implementation("androidx.media3:media3-ui:1.3.1")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

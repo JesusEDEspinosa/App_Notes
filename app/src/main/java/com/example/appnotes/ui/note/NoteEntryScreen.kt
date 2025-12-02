@@ -85,6 +85,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -98,23 +99,6 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
-
-/*
-    Unidad 7 - Datos
-    -CRUD Nota/Tarea: Implementado en el ViewModel (saveNote, loadNote) y UI (NoteEntryScreen)
-    -CRUD n Multimedia: Implementado en AttachmentsCard y ViewModel (addAttachment, removeAttachment)
-    -CRUD n Recordatorio: Implementado en RemindersCard y ViewModel (addReminder, removeReminder)
-    -Archivos: Gestión de archivos locales mediante URIs (rememberLauncherForActivityResult)
-    -Informe técnico final: Estructura del proyecto y documentación.
-
-    Unidad 8 - Multimedia
-    Foto n: Implementado con rememberCameraLauncher y CameraX/Intent implícito.
-    Audio n: Implementado con rememberAudioLauncher y MediaStore Intent.
-    Video n: Implementado con rememberVideoLauncher y ActivityResultContracts.CaptureVideo.
-    Recurso del sistema System n: Uso de Intents para abrir archivos, cámara, galería.
-    Notificaciones/Reprogramación n: Implementado en AlarmScheduler y BootReceiver.
-    Permisos en tiempo de ejecución n: Manejo dinámico de permisos (CAMERA, RECORD_AUDIO, POST_NOTIFICATIONS).
-*/
 
 @Composable
 fun NoteEntryScreen(
@@ -201,6 +185,13 @@ fun NoteEntryForm(
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+    var viewingAttachment by remember { mutableStateOf<Attachment?>(null) }
+
+    if (viewingAttachment != null) {
+        Dialog(onDismissRequest = { viewingAttachment = null }) {
+            MediaViewer(uri = viewingAttachment!!.uri, type = viewingAttachment!!.type)
+        }
+    }
 
     Column(
         modifier = modifier
@@ -289,22 +280,7 @@ fun NoteEntryForm(
                     ) {
                         Box(modifier = Modifier
                             .fillMaxSize()
-                            .clickable {
-                                val intent = Intent(Intent.ACTION_VIEW).apply {
-                                    val uri = Uri.parse(att.uri)
-                                    setDataAndType(uri, context.contentResolver.getType(uri))
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                                try {
-                                    context.startActivity(intent)
-                                } catch (e: ActivityNotFoundException) {
-                                    Toast.makeText(
-                                        context,
-                                        "No hay aplicación disponible para abrir este archivo.",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                            }
+                            .clickable { viewingAttachment = att }
                         ) {
                             when (att.type) {
                                 "image" -> {
