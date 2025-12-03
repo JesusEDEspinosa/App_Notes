@@ -1,4 +1,3 @@
-
 package com.example.appnotes.ui.note
 
 import android.Manifest
@@ -101,6 +100,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import com.example.appnotes.AudioRecorderImpl
+import androidx.core.app.ActivityCompat
 
 @Composable
 fun NoteEntryScreen(
@@ -384,6 +384,47 @@ fun NoteEntryForm(
 fun rememberCameraLauncher(onAddAttachment: (Attachment) -> Unit): CameraLauncher {
     val context = LocalContext.current
     var tempImageUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var showRationaleDialog by remember { mutableStateOf(false) }
+
+    if (showRationaleDialog) {
+        Dialog(onDismissRequest = { showRationaleDialog = false }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                elevation = CardDefaults.cardElevation(8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Permiso necesario",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Esta aplicación necesita acceso a la cámara para tomar fotos y adjuntarlas a tus notas.")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Button(onClick = { showRationaleDialog = false }) {
+                            Text("Cancelar")
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(onClick = {
+                            showRationaleDialog = false
+                            (context as? Activity)?.let { openAppSettings(it) }
+                        }) {
+                            Text("Abrir Ajustes")
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture(),
@@ -406,16 +447,18 @@ fun rememberCameraLauncher(onAddAttachment: (Attachment) -> Unit): CameraLaunche
             tempImageUri = uri
             cameraLauncher.launch(uri)
         } else {
-            Toast.makeText(context, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show()
-            (context as? Activity)?.let { openAppSettings(it) }
+            val activity = context as? Activity
+            if (activity != null && !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CAMERA)) {
+                 showRationaleDialog = true
+            }
         }
     }
 
     return remember {
         object : CameraLauncher {
             override fun captureImage() {
-                when (PackageManager.PERMISSION_GRANTED) {
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) -> {
+                when {
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED -> {
                         val tempImageFile = File.createTempFile("JPEG_", ".jpg", context.externalCacheDir)
                         val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", tempImageFile)
                         tempImageUri = uri
@@ -439,6 +482,47 @@ fun rememberAudioLauncher(onAddAttachment: (Attachment) -> Unit): AudioRecorderL
     val context = LocalContext.current
     val recorder = remember { AudioRecorderImpl(context) }
     var tempAudioFile by remember { mutableStateOf<File?>(null) }
+    var showRationaleDialog by remember { mutableStateOf(false) }
+
+    if (showRationaleDialog) {
+         Dialog(onDismissRequest = { showRationaleDialog = false }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                elevation = CardDefaults.cardElevation(8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Permiso necesario",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Esta aplicación necesita acceso al micrófono para grabar notas de voz.")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Button(onClick = { showRationaleDialog = false }) {
+                            Text("Cancelar")
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(onClick = {
+                            showRationaleDialog = false
+                            (context as? Activity)?.let { openAppSettings(it) }
+                        }) {
+                            Text("Abrir Ajustes")
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -448,8 +532,10 @@ fun rememberAudioLauncher(onAddAttachment: (Attachment) -> Unit): AudioRecorderL
                 recorder.start(tempFile)
                 tempAudioFile = tempFile
             } else {
-                Toast.makeText(context, "Permiso de grabación de audio denegado.", Toast.LENGTH_SHORT).show()
-                (context as? Activity)?.let { openAppSettings(it) }
+                val activity = context as? Activity
+                if (activity != null && !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.RECORD_AUDIO)) {
+                     showRationaleDialog = true
+                }
             }
         }
     )
@@ -488,6 +574,47 @@ interface AudioRecorderLauncher {
 fun rememberVideoLauncher(onAddAttachment: (Attachment) -> Unit): VideoLauncher {
     val context = LocalContext.current
     var tempVideoUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var showRationaleDialog by remember { mutableStateOf(false) }
+    
+     if (showRationaleDialog) {
+         Dialog(onDismissRequest = { showRationaleDialog = false }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                elevation = CardDefaults.cardElevation(8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Permiso necesario",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Esta aplicación necesita acceso a la cámara para grabar videos.")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Button(onClick = { showRationaleDialog = false }) {
+                            Text("Cancelar")
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(onClick = {
+                            showRationaleDialog = false
+                            (context as? Activity)?.let { openAppSettings(it) }
+                        }) {
+                            Text("Abrir Ajustes")
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     val videoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CaptureVideo(),
@@ -510,8 +637,10 @@ fun rememberVideoLauncher(onAddAttachment: (Attachment) -> Unit): VideoLauncher 
                 tempVideoUri = uri
                 videoLauncher.launch(uri)
             } else {
-                Toast.makeText(context, "Permiso de cámara denegado.", Toast.LENGTH_SHORT).show()
-                (context as? Activity)?.let { openAppSettings(it) }
+                 val activity = context as? Activity
+                if (activity != null && !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CAMERA)) {
+                     showRationaleDialog = true
+                }
             }
         }
     )
@@ -519,8 +648,8 @@ fun rememberVideoLauncher(onAddAttachment: (Attachment) -> Unit): VideoLauncher 
     return remember {
         object : VideoLauncher {
             override fun captureVideo() {
-                when (PackageManager.PERMISSION_GRANTED) {
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) -> {
+                when {
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED -> {
                         val tempVideoFile = File.createTempFile("MP4_", ".mp4", context.externalCacheDir)
                         val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", tempVideoFile)
                         tempVideoUri = uri
